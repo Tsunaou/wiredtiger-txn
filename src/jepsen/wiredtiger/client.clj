@@ -23,7 +23,7 @@
     (.close conn nil)))
 
 (defn close-session
-  "Close a session"
+  "close a session"
   [^Session session]
   (let [_ (info "Close session")]
     (.close session nil)))
@@ -51,7 +51,11 @@
 
 (defn ^Cursor get-cursor
   [^Session session table-name]
-  (.open_cursor table-name nil "overwrite=false" session))
+  (.open_cursor session table-name nil "overwrite=false" ))
+
+(defn ^Cursor close-cursor
+  [^Cursor cursor]
+  (.close cursor))
 
 (defn begin-transaction
   "Begin a transaction on a WiredTiger session."

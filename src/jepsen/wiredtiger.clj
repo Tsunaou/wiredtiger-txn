@@ -4,12 +4,13 @@
              [pprint :refer [pprint]]]
             [jepsen [cli :as cli]
              [tests :as tests]
-             [nemesis :as nemesis]
              [util :as util :refer [parse-long]]]
             [jepsen.os.debian :as debian]
             [jepsen.wiredtiger [db :as db]
-             [list-append :as list-append]]
-            [jepsen.checker :as checker]))
+             [list-append :as list-append]
+             [nemesis :as nemesis]]
+            [jepsen.checker :as checker]
+            [jepsen.generator :as gen]))
 
 (def workloads
   {:list-append list-append/workload
@@ -25,12 +26,12 @@
   :concurrency, ...), constructs a test map"
   [opts]
   (let [
-        ;workload-name (:workload opts)
-        ;workload      ((workloads workload-name) opts)
-        workload (list-append/rw-workload opts)
+        workload-name (:workload opts)
+        workload      ((workloads workload-name) opts)
+        ;workload (list-append/rw-workload opts)
+        nemesis       (nemesis/nemesis-package nil)
         db (db/wiredtiger-db opts)
-        _ (info "workload is ")
-        _ (info workload)]
+        _ (info "workload is " workload-name)]
     (merge tests/noop-test
            opts
            {:pure-generators true
@@ -38,8 +39,12 @@
             :os              debian/os
             :db              db
             :client          (:client workload)
-            :nemesis         nemesis/noop
-            :generator       (:generator workload)})))
+            :nemesis         (:nemesis nemesis)
+            :generator       (gen/phases
+                               (->> (:generator workload)
+                                    (gen/stagger (/ (:rate opts)))
+                                    (gen/nemesis (:generator nemesis))
+                                    (gen/time-limit (:time-limit opts))))})))
 
 (def cli-opts
   "Addtional CLI options"
@@ -53,9 +58,15 @@
     :parse-fn parse-long
     :validate [pos? "Must be a positive integer."]]
 
+   ["-r" "--rate HZ" "Approximate number of requests per second, total"
+    :default 1000
+    :parse-fn read-string
+    :validate [#(and (number? %) (pos? %)) "Must be a positive number"]]
+
    [nil "--dir" "Where is the directory of wiredtiger database?"
     :parse-fn read-string
     :default "/home/young/WT_HOME"]
+
    ["-w" "--workload NAME" "What workload should we run?"
     :parse-fn keyword
     :validate [workloads (cli/one-of workloads)]]
