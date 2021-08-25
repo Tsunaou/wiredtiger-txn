@@ -9,8 +9,7 @@
 (defn install!
   [test]
   "Install WiredTiger on the current node"
-  (c/su
-    (c/exec :mkdir :-p (:dir test))))
+  (c/exec :mkdir :-p (:dir test)))
 
 (defn remove!
   [test]
@@ -29,5 +28,4 @@
     (teardown! [_ test node]
       ; For wiredtiger, just remove the directory
       (info node "tearing down wiredtiger")
-      ()
       (remove! test))))
