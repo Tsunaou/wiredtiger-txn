@@ -27,7 +27,7 @@
   (let [
         ;workload-name (:workload opts)
         ;workload      ((workloads workload-name) opts)
-        workload list-append/workload
+        workload (list-append/rw-workload opts)
         db (db/wiredtiger-db opts)
         _ (info "workload is ")
         _ (info workload)]

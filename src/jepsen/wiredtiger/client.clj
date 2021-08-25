@@ -10,28 +10,35 @@
 (defn ^Connection open
   "Opens a connection to a WiredTiger database."
   [dir]
-  (info "Get the connection to" dir)
-  (wiredtiger/open dir "create"))
+  (let [_ (info "Get the connection to" dir)
+        conn (wiredtiger/open dir "create")]
+    conn))
 
 (defn close
   "Close a connection to a WiredTiger database."
   [^Connection conn]
-  (.close nil conn))
+  (let [_ (info "Close connection ")]
+    (.close conn nil)))
 
 (defn ^Session start-session
   "Start a new session"
   [^Connection conn]
-  (.open_session nil conn))
+  (let [_ (info "Start a new session on conn " conn)
+        iso (new String "isolation=snapshot")
+        session (.open_session conn iso)
+        _ (info "Session is " session)]
+    session))
 
 (defn create-table-from-session
   [^Session session table-name table-format]
-  (info "Create a new table (if does not exist) named" table-name)
-  (.create table-name table-format session))
+  (let [_ (info "Create a new table (if does not exist) named" table-name)]
+    (.create session table-name table-format)))
 
 (defn create-table
   "Create a new table (if does not exist)"
   [^Connection conn table-name table-format]
-  (let [session (start-session conn)]
+  (let [_ (info "Begin create-table")
+        session (start-session conn)]
     (create-table-from-session session table-name table-format)))
 
 (defn ^Cursor get-cursor
@@ -41,17 +48,20 @@
 (defn begin-transaction
   "Begin a transaction on a WiredTiger session."
   [^Session session isolation-level]
-  (.begin_transaction isolation-level session))
+  (let [_ (info "begin transaction")]
+    (.begin_transaction session isolation-level)))
 
 (defn commit-transaction
   "Commit a transaction on a WiredTiger session."
   [^Session session]
-  (.commit_transaction nil session))
+  (let [_ (info "commit transaction")]
+    (.commit_transaction session nil)))
 
 (defn rollback-transaction
   "Rollback a transaction on a WiredTiger session."
   [^Session session]
-  (.rollback_transaction nil session))
+  (let [_ (info "rollback transaction")]
+    (.rollback_transaction session nil)))
 
 ;; Error handing
 (defmacro with-errors

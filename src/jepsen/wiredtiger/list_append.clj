@@ -28,23 +28,29 @@
   client/Client
   (open! [this test node]
     ; Get the connection to wiredtiger
-    (assoc this :conn (c/open (:dir test))))
-
-  (close! [this test]
-    (c/close conn))
+    (let [_ (info "Begin open!")]
+      (assoc this :conn (c/open (:dir test)))))
 
   (setup! [this test]
-    (c/create-table conn table-name table-format))
+    (let [_ (info "Begin setup!, conn is " conn)]
+      (c/create-table conn table-name table-format)
+      (c/close conn)))
 
   (invoke! [this test op]
-    (c/with-errors op
-      (timeout 5000 (assoc op :type :info, :error :timeout)
-        (with-open [session (c/start-session conn)]
-          (let [ret (c/begin-transaction session "isolation=snapshot")])
-            (info "Executing op" op)
-            (c/commit-transaction session)))))
+    (let [_ (info "Begin invoke!")]
+      (c/with-errors op
+                     (timeout 5000 (assoc op :type :info, :error :timeout)
+                              (with-open [session (c/start-session conn)]
+                                (let [ret (c/begin-transaction session "isolation=snapshot")])
+                                (info "Executing op" op)
+                                (c/commit-transaction session))))))
 
-  (teardown! [this test]))
+  (teardown! [this test]
+    (info "Begin teardown!"))
+
+  (close! [this test]
+    (let [_ (info "Begin close!")]
+      (c/close conn))))
 
 (defn workload
   "A generator, client, and checker for a list-append test."
