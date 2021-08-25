@@ -17,6 +17,7 @@
 (def table-name "table:txn")
 (def table-format "key_format=S,value_format=S")
 
+
 (defn apply-mop!
   "Applies a transactional micro-operation to a connection."
   [test session [f k v :as mop]]
@@ -24,24 +25,26 @@
 
     ))
 
-(defrecord WtClient [conn]
+(defrecord WtClient [conn, session]
   client/Client
   (open! [this test node]
     ; Get the connection to wiredtiger
     (let [_ (info "Begin open!")]
-      (assoc this :conn (c/open (:dir test)))))
+      (if (= conn nil)
+        (let [connection c/wt-conn]
+          (assoc this
+            :conn (:conn @connection)
+            :session (c/start-session (:conn @connection)))))))
 
   (setup! [this test]
     (let [_ (info "Begin setup!, conn is " conn)]
-      (c/create-table conn table-name table-format)
-      (c/close conn)))
+      (c/create-table conn table-name table-format)))
 
   (invoke! [this test op]
     (let [_ (info "Begin invoke!")]
       (c/with-errors op
                      (timeout 5000 (assoc op :type :info, :error :timeout)
-                              (with-open [session (c/start-session conn)]
-                                (let [ret (c/begin-transaction session "isolation=snapshot")])
+                              (let [ret (c/begin-transaction session "isolation=snapshot")]
                                 (info "Executing op" op)
                                 (c/commit-transaction session))))))
 
@@ -50,7 +53,7 @@
 
   (close! [this test]
     (let [_ (info "Begin close!")]
-      (c/close conn))))
+      (c/close-session session))))
 
 (defn workload
   "A generator, client, and checker for a list-append test."
@@ -60,7 +63,7 @@
                             :max-txn-length     (:max-txn-length opts 4)
                             :max-writes-per-key (:max-writes-per-key opts)
                             :consistency-models [:strong-snapshot-isolation]})
-    :client (WtClient. nil)))
+    :client (WtClient. nil nil)))
 
 (defn r [_ _] {:type :invoke, :f :read, :value nil})
 (defn w [_ _] {:type :invoke, :f :write, :value (rand-int 5)})
@@ -72,4 +75,10 @@
                    (gen/stagger 1)
                    (gen/nemesis nil)
                    (gen/time-limit 15))
-   :client    (WtClient. nil)})
+   :client    (WtClient. nil nil)}
+)
+
+(defn close-atom-connection
+  []
+  (let [conn c/wt-conn]
+    (c/close-connection (:conn @conn))))

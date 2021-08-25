@@ -3,13 +3,17 @@
                      [string :as str]]
             [clojure.tools.logging :refer [info warn]]
             [jepsen [db :as db]
-                    [control :as c]]))
-
+                    [control :as c]]
+            [jepsen.wiredtiger [client :as client]]))
 
 (defn install!
   [test]
   "Install WiredTiger on the current node"
-  (c/exec :mkdir :-p (:dir test)))
+  (c/exec :mkdir :-p (:dir test))
+  (let [dir (:dir test)
+        _ (info "dir in opts is " dir)
+        conn (client/open dir)
+        _ (swap! client/wt-conn assoc :conn conn)]))
 
 (defn remove!
   [test]

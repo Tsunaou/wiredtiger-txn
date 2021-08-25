@@ -67,4 +67,5 @@
   [& args]
   (cli/run! (cli/single-test-cmd {:test-fn  wiredtiger-test
                                   :opt-spec cli-opts})
-            args))
+            args)
+  (list-append/close-atom-connection))

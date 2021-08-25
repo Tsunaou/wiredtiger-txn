@@ -5,8 +5,10 @@
                               Session
                               Cursor
                               WiredTigerException)))
-
 ;; Connection managerment
+;; Atom to record the connection to WiredTiger
+(def wt-conn (atom {:conn nil}))
+
 (defn ^Connection open
   "Opens a connection to a WiredTiger database."
   [dir]
@@ -14,11 +16,17 @@
         conn (wiredtiger/open dir "create")]
     conn))
 
-(defn close
+(defn close-connection
   "Close a connection to a WiredTiger database."
   [^Connection conn]
   (let [_ (info "Close connection ")]
     (.close conn nil)))
+
+(defn close-session
+  "Close a session"
+  [^Session session]
+  (let [_ (info "Close session")]
+    (.close session nil)))
 
 (defn ^Session start-session
   "Start a new session"
