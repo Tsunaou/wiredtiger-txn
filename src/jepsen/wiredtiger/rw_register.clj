@@ -1,5 +1,5 @@
-(ns jepsen.wiredtiger.list-append
-  "Elle list append workload"
+(ns jepsen.wiredtiger.rw-register
+  "Elle rw register workload"
   (:require [clojure [pprint :refer [pprint]]]
             [clojure.tools.logging :refer [info warn]]
             [dom-top.core :refer [with-retry]]
@@ -7,12 +7,14 @@
              [checker :as checker]
              [util :as util :refer [timeout]]]
             [jepsen.tests.cycle :as cycle]
-            [jepsen.tests.cycle.append :as list-append]
+            [jepsen.tests.cycle.wr :as rw-register]
             [jepsen.wiredtiger [client :as c]]
             [slingshot.slingshot :as slingshot]
             [jepsen.generator :as gen])
   (:import (java.util.concurrent TimeUnit)
            (com.wiredtiger.db wiredtiger)))
+
+
 
 (defn apply-mop!
   "Applies a transactional micro-operation to a connection."
@@ -20,6 +22,8 @@
   (with-open [cursor  (c/get-cursor session c/table-name)]
     (case f
       :r  (let [_ (info "read from key:" k)]
+            mop)
+      :w  (let [_ (info "write key:" k "with value " v)]
             mop)
       :append (let [_ (info "append list in key " k "with " v)]
                 mop))))
@@ -60,13 +64,18 @@
   (close! [this test]
     (let [_ (info "Begin close!")])))
 
-(defn workload
-  "A generator, client, and checker for a list-append test."
+(defn rw-test
   [opts]
-  (assoc (list-append/test {:key-count          10
-                            :key-dist           :exponential
-                            :max-txn-length     (:max-txn-length opts 4)
-                            :max-writes-per-key (:max-writes-per-key opts)
-                            :consistency-models [:strong-snapshot-isolation]})
-    :client (WtClient. nil)))
+  {:generator (rw-register/gen opts)
+   :checker   (rw-register/checker opts)
+   })
 
+(defn workload
+  "A generator, client, and checker for a rw-register test."
+  [opts]
+  (assoc (rw-test {:key-count          10
+                   :key-dist           :exponential
+                   :max-txn-length     (:max-txn-length opts 4)
+                   :max-writes-per-key (:max-writes-per-key opts)
+                   :consistency-models [:strong-snapshot-isolation]})
+    :client (WtClient. nil)))

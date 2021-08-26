@@ -5,6 +5,10 @@
                               Session
                               Cursor
                               WiredTigerException)))
+
+(def table-name "table:txn")
+(def table-format "key_format=S,value_format=S")
+
 ;; Connection managerment
 ;; Atom to record the connection to WiredTiger
 (def wt-conn (atom {:conn nil}))
@@ -83,3 +87,8 @@
   `(try ~@body
      (catch WiredTigerException e#
        (throw e#))))
+
+(defn close-atom-connection
+  []
+  (let [conn wt-conn]
+    (close-connection (:conn @conn))))

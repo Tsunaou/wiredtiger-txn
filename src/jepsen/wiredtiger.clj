@@ -8,13 +8,15 @@
             [jepsen.os.debian :as debian]
             [jepsen.wiredtiger [db :as db]
              [list-append :as list-append]
-             [nemesis :as nemesis]]
+             [rw-register :as rw-register]
+             [nemesis :as nemesis]
+             [client :as c]]
             [jepsen.checker :as checker]
             [jepsen.generator :as gen]))
 
 (def workloads
   {:list-append list-append/workload
-   :rw-register list-append/rw-workload
+   :rw-register rw-register/workload
    :none        (fn [_] tests/noop-test)})
 
 (def wiredtiger-node
@@ -79,4 +81,4 @@
   (cli/run! (cli/single-test-cmd {:test-fn  wiredtiger-test
                                   :opt-spec cli-opts})
             args)
-  (list-append/close-atom-connection))
+  (c/close-atom-connection))
