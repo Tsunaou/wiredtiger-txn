@@ -4,10 +4,11 @@
                               Connection
                               Session
                               Cursor
-                              WiredTigerException)))
+                              WiredTigerException
+                              WiredTigerRollbackException)))
 
 (def table-name "table:txn")
-(def table-format "key_format=S,value_format=S")
+(def table-format "key_format=q,value_format=q")            ; q means long in java
 
 ;; Connection managerment
 ;; Atom to record the connection to WiredTiger
@@ -55,7 +56,8 @@
 
 (defn ^Cursor get-cursor
   [^Session session table-name]
-  (.open_cursor session table-name nil "overwrite=false" ))
+  ;; TODO: "overwrite=false" needed?
+  (.open_cursor session table-name nil nil))
 
 (defn ^Cursor close-cursor
   [^Cursor cursor]
@@ -79,6 +81,35 @@
   (let [_ (info "rollback transaction")]
     (.rollback_transaction session nil)))
 
+(defn found-key?
+  [ret]
+  (= ret 0))
+
+(defn update-ok?
+  [ret]
+  (= ret 0))
+
+(defn read-from
+  "Read a value from key"
+  [^Cursor cursor, key]
+  (let [_   (info "reading from key " key)
+        _   (.putKeyLong cursor key)
+        ret (.search cursor)]
+    (if (found-key? ret)
+      (.getValueLong cursor)
+      nil)))
+
+(defn write-into
+  "Write a value into a register"
+  [^Cursor cursor, key, value]
+  (let [_   (info "writing key " key "with value " value)
+        _   (.putKeyLong cursor key)
+        _   (.putValueLong cursor value)
+        ret (.update cursor)]
+    (if (update-ok? ret)
+      value
+      nil)))
+
 ;; Error handing
 (defmacro with-errors
   "Remaps common errors; takes an operation and returns a :fail or :info op
@@ -86,7 +117,14 @@
   [op & body]
   `(try ~@body
      (catch WiredTigerException e#
-       (throw e#))))
+       (condp re-find (.getMessage e#)
+         ;
+         #"WT_ERROR: non-specific WiredTiger error"
+         (assoc ~op :type :info, :error :non-specific-wiredtiger)
+
+         (throw e#)))
+     (catch WiredTigerRollbackException e#
+       (assoc ~op :type :info, :error :conflict-rollback))))
 
 (defn close-atom-connection
   []

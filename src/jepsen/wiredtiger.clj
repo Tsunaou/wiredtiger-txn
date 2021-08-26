@@ -40,6 +40,12 @@
             :name            "wiredtiger"
             :os              debian/os
             :db              db
+            :checker         (checker/compose
+                               {:perf       (checker/perf)
+                                :clock      (checker/clock-plot)
+                                :stats      (checker/stats)
+                                :exceptions (checker/unhandled-exceptions)
+                                :workload   (:checker workload)})
             :client          (:client workload)
             :nemesis         (:nemesis nemesis)
             :generator       (gen/phases
@@ -78,7 +84,8 @@
   "Handles command line arguments. Can either run a test, or a web server for
   browsing results"
   [& args]
-  (cli/run! (cli/single-test-cmd {:test-fn  wiredtiger-test
-                                  :opt-spec cli-opts})
+  (cli/run! (merge (cli/single-test-cmd {:test-fn  wiredtiger-test
+                                         :opt-spec cli-opts})
+                   (cli/serve-cmd))
             args)
   (c/close-atom-connection))

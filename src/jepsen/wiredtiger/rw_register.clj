@@ -12,7 +12,7 @@
             [slingshot.slingshot :as slingshot]
             [jepsen.generator :as gen])
   (:import (java.util.concurrent TimeUnit)
-           (com.wiredtiger.db wiredtiger)))
+           (com.wiredtiger.db WiredTigerRollbackException)))
 
 
 
@@ -21,12 +21,9 @@
   [test session [f k v :as mop]]
   (with-open [cursor  (c/get-cursor session c/table-name)]
     (case f
-      :r  (let [_ (info "read from key:" k)]
-            mop)
-      :w  (let [_ (info "write key:" k "with value " v)]
-            mop)
-      :append (let [_ (info "append list in key " k "with " v)]
-                mop))))
+      :r  [f k (c/read-from cursor k)]
+      :w  (let [_ (c/write-into cursor k v)]
+            mop))))
 
 (defrecord WtClient [conn]
   client/Client
@@ -48,15 +45,20 @@
                      (timeout 5000 (assoc op :type :info, :error :timeout)
                               (let [txn' (let [session (c/start-session conn)]
                                            (try (let [ret (c/begin-transaction session "isolation=snapshot")
-                                                      _   (info "Executing op" op)
+                                                      ;_   (info "Executing op" op)
                                                       res (mapv (partial apply-mop! test session) (:value op))
-                                                      _   (info "Result is " res)]
+                                                      ;_   (info "Result is " res)
+                                                      _   (c/commit-transaction session)]
                                                   res)
+                                                (catch WiredTigerRollbackException e#
+                                                  (c/rollback-transaction session)
+                                                  nil)
                                                 (finally
-                                                  (c/commit-transaction session)
                                                   (c/close-session session)))
                                            )]
-                                (assoc op :type :ok :value txn'))))))
+                                (if (= txn' nil)
+                                  (assoc op :type :info, :error :conflict-rollback)
+                                  (assoc op :type :ok, :value txn')))))))
 
   (teardown! [this test]
     (info "Begin teardown!"))
