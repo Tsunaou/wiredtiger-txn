@@ -6,10 +6,6 @@
                               Cursor
                               WiredTigerException
                               WiredTigerRollbackException)))
-
-(def table-name "table:txn")
-(def table-format "key_format=q,value_format=q")            ; q means long in java
-
 ;; Connection managerment
 ;; Atom to record the connection to WiredTiger
 (def wt-conn (atom {:conn nil}))
@@ -44,8 +40,9 @@
 
 (defn create-table-from-session
   [^Session session table-name table-format]
-  (let [_ (info "Create a new table (if does not exist) named" table-name)]
-    (.create session table-name table-format)))
+  (let [_ (info "Create a new table (if does not exist) named" table-name "with format" table-format)
+        ret (.create session table-name table-format)]
+    (info "Create result " ret)))
 
 (defn create-table
   "Create a new table (if does not exist)"
@@ -55,9 +52,12 @@
     (create-table-from-session session table-name table-format)))
 
 (defn ^Cursor get-cursor
-  [^Session session table-name]
-  ;; TODO: "overwrite=false" needed?
-  (.open_cursor session table-name nil nil))
+  ([^Session session table-name]
+   ;; TODO: "overwrite=false" needed?
+   (.open_cursor session table-name nil nil))
+  ([^Session session table-name config]
+   (let [_ (info "Connecting to table " table-name)]
+     (.open_cursor session table-name nil config))))
 
 (defn ^Cursor close-cursor
   [^Cursor cursor]
@@ -81,11 +81,12 @@
   (let [_ (info "rollback transaction")]
     (.rollback_transaction session nil)))
 
+;; For rw-register
 (defn found-key?
   [ret]
   (= ret 0))
 
-(defn update-ok?
+(defn operation-ok?
   [ret]
   (= ret 0))
 
@@ -106,9 +107,44 @@
         _   (.putKeyLong cursor key)
         _   (.putValueLong cursor value)
         ret (.update cursor)]
-    (if (update-ok? ret)
+    (if (operation-ok? ret)
       value
       nil)))
+
+
+;; Special for list-append workload
+(defn create-key-tables
+  "Create tables, each table represent for a key in key-value data store"
+  [^Connection conn table-format table-name]
+  (let [_ (info "Begin create-key-table")
+        session (start-session conn)]
+    (create-table-from-session session table-name table-format)))
+
+(defn append-to
+  "Append a value to a list(A row to the table in wiredtiger)"
+  [^Cursor cursor, key, value]
+  (let [_   (info "append key " key "with value " value)
+        _   (.putValueLong cursor value)
+        ret (.insert cursor)]
+    (if (operation-ok? ret)
+      value
+      nil)))
+
+(defn read-from-table
+  "Read the whole list from key"
+  [^Cursor cursor, key]
+  (let [_   (info "reading list from key " key)]
+    (def res (atom []))
+    (info "key format" (.getKeyFormat cursor))
+    (info "value  format" (.getValueFormat cursor))
+    (while (= (.next cursor) 0)
+      (do
+        (let [_     (.getKeyRecord cursor)
+              value (.getValueLong cursor)]
+          (reset! res (conj @res value)))))
+    (if (= 0 (count @res))
+      nil
+      @res)))
 
 ;; Error handing
 (defmacro with-errors

@@ -14,12 +14,13 @@
   (:import (java.util.concurrent TimeUnit)
            (com.wiredtiger.db WiredTigerRollbackException)))
 
-
+(def table-name "table:txn")
+(def table-format "key_format=q,value_format=q")            ; q means long in java
 
 (defn apply-mop!
   "Applies a transactional micro-operation to a connection."
   [test session [f k v :as mop]]
-  (with-open [cursor  (c/get-cursor session c/table-name)]
+  (with-open [cursor  (c/get-cursor session table-name)]
     (case f
       :r  [f k (c/read-from cursor k)]
       :w  (let [_ (c/write-into cursor k v)]
@@ -37,7 +38,7 @@
 
   (setup! [this test]
     (let [_ (info "Begin setup!, conn is " conn)]
-      (c/create-table conn c/table-name c/table-format)))
+      (c/create-table conn table-name table-format)))
 
   (invoke! [this test op]
     (let [_ (info "Begin invoke!")]
