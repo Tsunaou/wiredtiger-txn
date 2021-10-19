@@ -15,7 +15,7 @@
            (com.wiredtiger.db WiredTigerRollbackException)))
 
 (def table-name "table:txn")
-(def table-format "key_format=q,value_format=q")            ; q means long in java
+(def table-format "key_format=S,value_format=S")            ; q means long in java
 
 (defn apply-mop!
   "Applies a transactional micro-operation to a connection."

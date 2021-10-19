@@ -10,11 +10,13 @@
 ;; Atom to record the connection to WiredTiger
 (def wt-conn (atom {:conn nil}))
 
+(def log-config "create,cache_size=100MB,log=(archive=false,enabled=true)")
+
 (defn ^Connection open
   "Opens a connection to a WiredTiger database."
   [dir]
   (let [_ (info "Get the connection to" dir)
-        conn (wiredtiger/open dir "create")]
+        conn (wiredtiger/open dir log-config)]
     conn))
 
 (defn close-connection
@@ -94,18 +96,18 @@
   "Read a value from key"
   [^Cursor cursor, key]
   (let [_   (info "reading from key " key)
-        _   (.putKeyLong cursor key)
+        _   (.putKeyString cursor (str key))
         ret (.search cursor)]
     (if (found-key? ret)
-      (.getValueLong cursor)
+      (long (Integer/parseInt (.getValueString cursor)))
       nil)))
 
 (defn write-into
   "Write a value into a register"
   [^Cursor cursor, key, value]
   (let [_   (info "writing key " key "with value " value)
-        _   (.putKeyLong cursor key)
-        _   (.putValueLong cursor value)
+        _   (.putKeyString cursor (str key))
+        _   (.putValueString cursor (str value))
         ret (.update cursor)]
     (if (operation-ok? ret)
       value
