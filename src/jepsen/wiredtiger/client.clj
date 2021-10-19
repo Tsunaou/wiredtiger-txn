@@ -5,7 +5,7 @@
                               Session
                               Cursor
                               WiredTigerException
-                              WiredTigerRollbackException)))
+                              WiredTigerRollbackException Modify)))
 ;; Connection managerment
 ;; Atom to record the connection to WiredTiger
 (def wt-conn (atom {:conn nil}))
@@ -111,8 +111,64 @@
       value
       nil)))
 
+;; For list-append
+(defn read-list-length
+  "Read the length of array"
+  [^Cursor cursor, key]
+  (.putKeyLong cursor key)
+  (if (= (.search cursor) 0)
+    (let [value (.getValueByteArray cursor)]
+      (if (= value nil)
+        0
+        (alength value)))
+    0))
 
-;; Special for list-append workload
+(defn convert-long
+  [value]
+  (long value))
+
+(defn bytes-to-long
+  [bts-array]
+  (vec (map convert-long bts-array)))
+
+(defn read-from-list
+  "Read the list from key"
+  [^Cursor cursor, key]
+  (.putKeyLong cursor key)
+  (if (= (.search cursor) 0)
+    (let [value (.getValueByteArray cursor)]
+      (if (= value nil)
+        nil
+        (bytes-to-long value)))
+    nil))
+
+(defn initial-value
+  "Initial value for a list"
+  [value]
+  (byte-array [value]))
+
+(defn append-to-list
+  "Append a value into a list"
+  [^Cursor cursor, key, value]
+  ;; read first
+  (let [_   (info "append key " key " with value ")
+        length (read-list-length cursor key)
+        mod (initial-value value)]
+    (if (= length 0)
+      (let [_ (.putKeyLong cursor key)
+            _ (.putValueByteArray cursor mod)
+            ret (.insert cursor)]
+        (if (operation-ok? ret)
+          value
+          nil))
+      (let [_ (.putKeyLong cursor key)
+            modlist (into-array Modify [(new Modify mod length 1)])
+            ret (.modify cursor modlist)]
+        (if (operation-ok? ret)
+          value
+          nil)))))
+
+;; TODO: Deprecated: Special for list-append workload
 (defn create-key-tables
   "Create tables, each table represent for a key in key-value data store"
   [^Connection conn table-format table-name]
@@ -120,10 +176,11 @@
         session (start-session conn)]
     (create-table-from-session session table-name table-format)))
 
-(defn append-to
+(defn append-to-table
   "Append a value to a list(A row to the table in wiredtiger)"
   [^Cursor cursor, key, value]
   (let [_   (info "append key " key "with value " value)
+        _   (.putKeyRecord cursor 1000)
         _   (.putValueLong cursor value)
         ret (.insert cursor)]
     (if (operation-ok? ret)

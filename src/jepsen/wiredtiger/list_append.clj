@@ -14,20 +14,8 @@
   (:import (java.util.concurrent TimeUnit)
            (com.wiredtiger.db WiredTigerRollbackException)))
 
-;; necessary for key -> table -> key
-(def table-account 50)
-(def key-account 10)
-
-(defn make-table-name
-  [key]
-  (str "table:" key))
-
-(defn make-table-colgroup
-  [key]
-  (str "colgroup:" key ":main"))
-
-(def table-format "key_format=r,value_format=q,columns=(id, val),colgroups=(main)")
-(def colgroup-format "columns=(val)")
+(def table-name "table:txn")
+(def table-format "key_format=q,value_format=u")            ; q means long in java, u means byte[]
 
 (defn apply-mop!
   "Applies a transactional micro-operation to a connection."
@@ -36,12 +24,11 @@
                  :r      nil
                  :append "append")
         _ (info "f is" f ",key is" k ", append is " append)]
-    (with-open [cursor  (c/get-cursor session (make-table-name k) append)]
+    (with-open [cursor  (c/get-cursor session table-name)]
       (case f
-        :r      [f k (c/read-from-table cursor k)]
+        :r      [f k (c/read-from-list cursor k)]
         ;:r      mop
-        :append (let [ret (c/append-to cursor k v)
-                      _   (info "append result is " ret)]
+        :append (let [ret (c/append-to-list cursor k v)]
                    mop)
         ;:append mop
         )  
@@ -58,18 +45,8 @@
             :conn (:conn @connection))))))
 
   (setup! [this test]
-    (let [_         (info "Begin setup!, conn is " conn)
-          tables    (mapv make-table-name (range table-account))
-          colgroups (mapv make-table-colgroup (range table-account))
-          _         (info "Tables " tables)
-          _         (info "Col Groups " colgroups)]
-      (doseq [table tables]
-        (c/create-table conn table table-format))
-      (doseq [colgroup colgroups]
-        (c/create-table conn colgroup colgroup-format))
-      ;(mapv (partial c/create-key-tables conn table-format) tables)
-      ;(mapv (partial c/create-key-tables conn colgroup-format) colgroups)
-      ))
+    (let [_ (info "Begin setup!, conn is " conn)]
+      (c/create-table conn table-name table-format)))
 
   (invoke! [this test op]
     (let [_ (info "Begin invoke!")]
@@ -103,7 +80,7 @@
 (defn workload
   "A generator, client, and checker for a list-append test."
   [opts]
-  (assoc (list-append/test {:key-count          key-account
+  (assoc (list-append/test {:key-count          10
                             :key-dist           :uniform
                             :max-txn-length     (:max-txn-length opts 4)
                             :max-writes-per-key (:max-writes-per-key opts)
