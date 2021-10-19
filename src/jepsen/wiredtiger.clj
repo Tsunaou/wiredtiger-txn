@@ -37,7 +37,7 @@
     (merge tests/noop-test
            opts
            {:pure-generators true
-            :name            "wiredtiger"
+            :name            (str "wiredtiger" workload-name)
             :os              debian/os
             :db              db
             :checker         (checker/compose
