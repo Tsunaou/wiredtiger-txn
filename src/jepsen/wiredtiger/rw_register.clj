@@ -44,12 +44,16 @@
     (let [_ (info "Begin invoke!")]
       (c/with-errors op
                      (timeout 5000 (assoc op :type :info, :error :timeout)
-                              (let [txn' (let [session (c/start-session conn)]
-                                           (try (let [ret (c/begin-transaction session "isolation=snapshot")
+                              (let [start-timestamp (atom nil)
+                                    commit-timestamp (atom nil)
+                                    txn' (let [session (c/start-session conn)]
+                                           (try (let [_   (reset! start-timestamp (util/relative-time-nanos))
+                                                      ret (c/begin-transaction session "isolation=snapshot")
                                                       ;_   (info "Executing op" op)
                                                       res (mapv (partial apply-mop! test session) (:value op))
                                                       ;_   (info "Result is " res)
-                                                      _   (c/commit-transaction session)]
+                                                      _   (c/commit-transaction session)
+                                                      _   (reset! commit-timestamp (util/relative-time-nanos))]
                                                   res)
                                                 (catch WiredTigerRollbackException e#
                                                   (c/rollback-transaction session)
@@ -59,7 +63,7 @@
                                            )]
                                 (if (= txn' nil)
                                   (assoc op :type :info, :error :conflict-rollback)
-                                  (assoc op :type :ok, :value txn')))))))
+                                  (assoc op :type :ok, :value txn', :start-timestamp @start-timestamp, :commit-timestamp @commit-timestamp)))))))
 
   (teardown! [this test]
     (info "Begin teardown!"))
