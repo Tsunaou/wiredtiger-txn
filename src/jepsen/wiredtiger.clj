@@ -27,17 +27,17 @@
   "Given an options map from the command line runner(e.g. :nodes, :ssh,
   :concurrency, ...), constructs a test map"
   [opts]
-  (let [
-        workload-name (:workload opts)
+  (let [workload-name (:workload opts)
         workload      ((workloads workload-name) opts)
-        ;workload (list-append/rw-workload opts)
         nemesis       (nemesis/nemesis-package nil)
         db (db/wiredtiger-db opts)
         _ (info "workload is " workload-name)]
     (merge tests/noop-test
            opts
            {:pure-generators true
-            :name            (str "wiredtiger" workload-name)
+            :name            (str "wiredtiger " workload-name
+                                  (when-let [t (:time-limit opts)] (str " time:" t))
+                                  (when-let [m (:max-txn-length opts)] (str " txn-len:" m)))
             :os              debian/os
             :db              db
             :checker         (checker/compose
