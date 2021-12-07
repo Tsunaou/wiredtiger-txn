@@ -1,8 +1,12 @@
 # Centos + wiredtiger镜像制作
+无JDK，进行到clone wiredtiger的镜像
+
+pull ikcow/my_wiredtiger:uncompletedBase
+
 当前镜像 无java与pthon API docker
 
 pull ikcow/my_wiredtiger:v1
-## 镜像加速
+## 1.镜像加速
 参考https://www.cnblogs.com/djlsunshine/p/11375323.html
 
 cd /etc/docker/
@@ -14,17 +18,17 @@ touch daemon.json
 systemctl daemon-reload
 
 systemctl restart docker.service
-## 镜像制作
+## 2.镜像制作
 参考https://zhuanlan.zhihu.com/p/122380334
 
 docker pull centos
 
 docker run -it centos /bin/bash
-###下载语言包
+###2.1.下载语言包
 dnf install glibc-langpack-en
-###下载相关依赖
-yum install zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel
-###安装pthon
+###2.2.下载相关依赖
+yum install zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel wget gcc make gcc-c++ libtool pcre swig
+###2.3.安装pthon
 参考https://www.cnblogs.com/ech2o/p/11748464.html与https://www.icode9.com/content-1-147240.html
 
 cd /usr/local
@@ -46,15 +50,11 @@ make install
 ln -s /usr/local/python3/bin/python3 /usr/bin/python3
 
 ln -s /usr/local/python3/bin/pip3 /usr/bin/pip3
-###下载基础工具
-yum install git autoconf automake wget gcc libtool make gcc-c++
+###2.4.下载基础工具
+yum install git autoconf automake
 
 python3 -m pip install scons
-
-yum install pcre
-
-yum install swig
-###下载wiredtiger
+###2.5.下载wiredtiger
 git clone -b mongodb-4.2 git://github.com/wiredtiger/wiredtiger.git
 
 cd wiredtiger
@@ -64,7 +64,7 @@ sh autogen.sh
 //遇到问题yum install java java-devel并配置java环境
 
 ./configure --enable-java --enable-python && make
-##镜像上传
+##3.镜像上传
 docker commit -m "commit message" -a "authorName" containerID hubName/imageName:tagName
 
 docker login
