@@ -28,7 +28,7 @@ docker run -it centos /bin/bash
 dnf install glibc-langpack-en
 ###2.2.下载相关依赖
 yum install zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel wget gcc make gcc-c++ libtool pcre swig
-###2.3.安装pthon
+###2.3.安装python
 参考https://www.cnblogs.com/ech2o/p/11748464.html与https://www.icode9.com/content-1-147240.html
 
 cd /usr/local
