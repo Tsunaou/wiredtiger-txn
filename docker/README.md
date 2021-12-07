@@ -29,15 +29,15 @@ docker pull centos
 
 docker run -it centos /bin/bash
 
-###2.1.下载语言包
+### 2.1.下载语言包
 
 dnf install glibc-langpack-en
 
-###2.2.下载相关依赖
+### 2.2.下载相关依赖
 
 yum install zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel wget gcc make gcc-c++ libtool pcre swig
 
-###2.3.安装python
+### 2.3.安装python
 
 参考https://www.cnblogs.com/ech2o/p/11748464.html与https://www.icode9.com/content-1-147240.html
 
@@ -61,13 +61,13 @@ ln -s /usr/local/python3/bin/python3 /usr/bin/python3
 
 ln -s /usr/local/python3/bin/pip3 /usr/bin/pip3
 
-###2.4.下载基础工具
+### 2.4.下载基础工具
 
 yum install git autoconf automake
 
 python3 -m pip install scons
 
-###2.5.下载wiredtiger
+### 2.5.下载wiredtiger
 
 git clone -b mongodb-4.2 git://github.com/wiredtiger/wiredtiger.git
 
@@ -79,7 +79,7 @@ sh autogen.sh
 
 ./configure --enable-java --enable-python && make
 
-##3.镜像上传
+## 3.镜像上传
 
 docker commit -m "commit message" -a "authorName" containerID hubName/imageName:tagName
 
