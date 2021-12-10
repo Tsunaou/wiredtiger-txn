@@ -1,11 +1,5 @@
 # Centos + wiredtiger镜像制作
-无JDK，进行到clone wiredtiger的镜像
-
-pull ikcow/my_wiredtiger:uncompletedBase
-
-当前镜像 无java与pthon API docker
-
-pull ikcow/my_wiredtiger:v1
+docker pull ikcow/my_wiredtiger:v2
 
 ## 1.镜像加速
 
@@ -14,8 +8,11 @@ pull ikcow/my_wiredtiger:v1
 cd /etc/docker/
 
 touch daemon.json
-
-{   "registry-mirrors": ["https://almtd3fa.mirror.aliyuncs.com"] }
+```
+{
+"registry-mirrors": ["https://almtd3fa.mirror.aliyuncs.com"] 
+}
+```
 
 systemctl daemon-reload
 
@@ -67,7 +64,23 @@ yum install git autoconf automake
 
 python3 -m pip install scons
 
-### 2.5.下载wiredtiger
+### 2.5.安装java
+
+yum install java
+
+yum install java-devel
+
+vi /etc/profile
+
+```
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.312.b07-2.el8_5.x86_64
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+export PATH=$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
+```
+
+
+### 2.6.下载wiredtiger
 
 git clone -b mongodb-4.2 git://github.com/wiredtiger/wiredtiger.git
 
@@ -75,9 +88,33 @@ cd wiredtiger
 
 sh autogen.sh
 
-//遇到问题yum install java java-devel并配置java环境
-
 ./configure --enable-java --enable-python && make
+
+make install
+
+### 2.7. 验证
+
+cd /usr/local/lib/
+
+```
+/usr/local/lib/libwiredtiger-3.3.0.so: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=c01907e68fba73511db967e17d6f04c4ee2b9130, with debug_info, not stripped
+/usr/local/lib/libwiredtiger.a:        current ar archive
+/usr/local/lib/libwiredtiger.la:       libtool library file, ASCII text
+/usr/local/lib/libwiredtiger.so:       symbolic link to libwiredtiger-3.3.0.so
+```
+
+cd /usr/local/share/java/wiredtiger-3.3.0/
+
+```
+/usr/local/share/java/wiredtiger-3.3.0/libwiredtiger_java.a:        current ar archive
+/usr/local/share/java/wiredtiger-3.3.0/libwiredtiger_java.la:       libtool library file, ASCII text
+/usr/local/share/java/wiredtiger-3.3.0/libwiredtiger_java.so:       symbolic link to libwiredtiger_java.so.0.0.0
+/usr/local/share/java/wiredtiger-3.3.0/libwiredtiger_java.so.0:     symbolic link to libwiredtiger_java.so.0.0.0
+/usr/local/share/java/wiredtiger-3.3.0/libwiredtiger_java.so.0.0.0: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=5ff5cc829d2b57e8d8b53351fbe1b12f78352af1, with debug_info, not stripped
+/usr/local/share/java/wiredtiger-3.3.0/wiredtiger.jar:              Java archive data (JAR)
+```
+
+/usr/local/bin/wt
 
 ## 3.镜像上传
 
