@@ -1,5 +1,5 @@
 # Centos + wiredtiger镜像制作
-docker pull ikcow/my_wiredtiger:v2
+docker pull ikcow/my_wiredtiger:v3
 
 ## 1.镜像加速
 
@@ -8,6 +8,7 @@ docker pull ikcow/my_wiredtiger:v2
 cd /etc/docker/
 
 touch daemon.json
+
 ```
 {
 "registry-mirrors": ["https://almtd3fa.mirror.aliyuncs.com"] 
@@ -68,8 +69,6 @@ python3 -m pip install scons
 
 yum install java
 
-yum install java-devel
-
 vi /etc/profile
 
 ```
@@ -79,8 +78,17 @@ export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
 export PATH=$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
 ```
 
+. /etc/profile
+
+yum install java-devel
 
 ### 2.6.下载wiredtiger
+
+cd /home
+
+mkdir env
+
+cd env
 
 git clone -b mongodb-4.2 git://github.com/wiredtiger/wiredtiger.git
 
